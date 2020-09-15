@@ -1,6 +1,5 @@
 ######## wbr ######
-rb/processings/sentiment/corpus/emag_train.json
-rb/processings/sentiment/corpus/all_reviews.json 
+rb/processings/sentiment/corpus/* 
 
 
 # Byte-compiled / optimized / DLL files
