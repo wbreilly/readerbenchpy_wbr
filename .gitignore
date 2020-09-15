@@ -1,3 +1,8 @@
+######## wbr ######
+rb/processings/sentiment/corpus/emag_train.json
+rb/processings/sentiment/corpus/all_reviews.json 
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
