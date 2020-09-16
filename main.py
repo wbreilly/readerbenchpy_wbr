@@ -144,7 +144,7 @@ def do_indices():
         doc = Document(lang=args.indices_lang, text=content)
         """you can compute indices without the cna graph, but this means 
            some indices won't be computed"""
-        cna_graph = CnaGraph(doc=doc, models=[model])
+        cna_graph = CnaGraph(docs=doc, models=[model])
         compute_indices(doc=doc, cna_graph=cna_graph)
         
         if i == 0: # first row ith indices name
