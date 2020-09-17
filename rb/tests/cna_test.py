@@ -11,15 +11,13 @@ class CnaTest(unittest.TestCase):
         text_string = "This is a text string. Does the parsing work?"
         doc = Document(Lang.EN, text_string)
         model_spec= [{"model":"word2vec","corpus":"coca"}]#,{"model":"lsa","corpus":"coca"}]
-
+        
         models = [stuff.create_vector_model(Lang.EN,model=stuff.VectorModelType.from_str(model["model"]),corpus=model["corpus"]) for model in model_spec]
         models = [model for model in models if model is not None]
-
         
-        # model = get_default_model(Lang.EN)
         cna = CnaGraph(doc,models)
-        # self.assertEqual(len(cna.graph.edges), 4, "Should be 4")
-        print(cna)
+        self.assertEqual(len(cna.graph.edges), 4, "Should be 4")
+
         
     
 if __name__ == '__main__':
