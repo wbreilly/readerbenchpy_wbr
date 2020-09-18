@@ -91,7 +91,6 @@ def create_df(result: dict):
     dict_list=filt_dict['edges']
     
     # things I need from the dict
-    # these will be column names in df 
     sources = [] 
     targets = [] 
     name = [] 
