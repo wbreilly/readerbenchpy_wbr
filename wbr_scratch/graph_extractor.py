@@ -70,7 +70,7 @@ def compute_graph(texts: List[str], lang: Lang, models: List) -> str:
     result["data"]["edges"] = edges
     return result
 
-def create_df(result: dict):
+def create_edge_df(result: dict):
     '''
     Parameters
     ----------
@@ -78,7 +78,7 @@ def create_df(result: dict):
     
     Returns
     -------
-    df : Pandas df
+    df : Pandas df edge data
     '''
     # Only interested in edge info
     filt_dict = {}
@@ -112,12 +112,51 @@ def create_df(result: dict):
                     'name':name,
                     'weight':weight,
                     'details':details})
-    
     return df
     
-
-
-
+def create_node_df(result: dict):
+    '''
+    Parameters
+    ----------
+    result : 'result' returned from graph_extractor.compute_graph 
+    
+    Returns
+    -------
+    df : Pandas df of importance for nodes
+    '''
+    # interested in nodes. # no multi doc 
+    dict1 = {}
+    for key,val in result.items():
+        for key2,val2 in val.items():
+            if (key2 == 'children'):
+                dict1[key2] =val2
+    
+    dict1 = dict1['children']
+    dict1 = dict1[0]
+    
+    name=[]
+    content=[]
+    depth=[]
+    importance=[]
+    
+    for node in dict1['children']:
+        # paragraph level
+        name.append(node['name'])
+        content.append(node['value'])
+        depth.append(node['type'])
+        importance.append(node['importance'])
+        # sentence level
+        for sent in node['children']:
+            name.append(sent['name'])
+            content.append(sent['value'])
+            depth.append(sent['type'])
+            importance.append(sent['importance'])
+            
+    df = DataFrame({'node':name,
+                    'depth':depth,
+                    'importance':importance,
+                    'content':content})
+    return df
 
 
 
