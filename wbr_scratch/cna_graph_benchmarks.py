@@ -67,18 +67,26 @@ list_of_dfs = batch_texts(text_list)
 def sentmax(list_of_dfs):
     first=[]
     # node dfs, so count by two
-    for df in list_of_dfs[::2]:
+    for counter,df in enumerate(list_of_dfs[::2]):
         df[['junk','para','sent']] = df['node'].str.split('.',expand=True)
         df.loc[pd.isnull(df.sent), 'para'] = np.nan
         para_max = df.groupby(by='para')['importance'].max()
         df['para_max'] = df['para'].map(para_max)
         
         first_sent = df[df['sent'] =='1']
-        first.append(first_sent.importance == first_sent.para_max)
         
-    out = pd.concat(first)
-    prop= np.sum(out)/len(out)
-    return prop
+        firstmax=[]
+        firstmax= first_sent.importance == first_sent.para_max
+        prop=[]
+        prop= np.sum(firstmax)/len(firstmax)
+        
+        first.append([prop,text_names[counter]])
+        
+        # first.append([first_sent.importance == first_sent.para_max,text_names[counter]])
+        
+    # out = pd.concat(first)
+    # prop= np.sum(out)/len(out)
+    return first
 
 prop = sentmax(list_of_dfs)
 
