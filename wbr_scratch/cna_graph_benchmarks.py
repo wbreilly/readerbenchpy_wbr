@@ -12,6 +12,7 @@ from graph_extractor import compute_graph,create_edge_df,create_node_df
 from rb.core.lang import Lang
 from pandas import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 # single text/ manual input
 # text = ['Mona was a good dog. She was the best dog named Mona.']
@@ -89,6 +90,63 @@ def sentmax(list_of_dfs):
     return first
 
 prop = sentmax(list_of_dfs)
+
+#create adjacency matrix from weighted edge list
+
+### COREF needs work. Weight is currently nan.
+
+
+import networkx
+edges = list_of_dfs[3]
+# start with simpler case, single type of edge instead of multiple
+new = edges.copy()
+new['weight'] = new['weight'].astype(float) 
+
+for edge in new.name.unique().tolist():
+    new = edges.copy()
+    new['weight'] = new['weight'].astype(float) 
+    new = new[new.name == edge]
+    new = new.filter(['source','target','weight'], axis=1)
+    
+    edge_list = new.values.tolist()
+    g = networkx.DiGraph()
+    for i in range(len(edge_list)):
+        g.add_edge(edge_list[i][0], edge_list[i][1], weight=edge_list[i][2])
+    
+    A = networkx.adjacency_matrix(g).A
+    plt.imshow(A)
+    plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     
         
