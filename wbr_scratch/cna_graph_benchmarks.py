@@ -29,7 +29,8 @@ import matplotlib.pyplot as plt
 # batch method
 models = [{"model":"word2vec","corpus":"coca"},
           {"model":"lsa","corpus":"coca"}]
-          # {"model":"lda","corpus":"coca"}]
+          #{"model":"lda","corpus":"coca"}] # not sure this is working as intended. 
+          # Extremely  high sim between everything in Hinze texts.
 
 # text_names = ['endocrine.txt',
 #               'endocrine_p1.txt',
@@ -91,14 +92,14 @@ def sentmax(list_of_dfs):
 
 prop = sentmax(list_of_dfs)
 
+
 #create adjacency matrix from weighted edge list
-
 ### COREF needs work. Weight is currently nan.
-
-
+#%%
+# single type of edge instead of multiple plots. Can't show in one plot because
+# similarity between different models doesn't make sense.
 import networkx
-edges = list_of_dfs[3]
-# start with simpler case, single type of edge instead of multiple
+edges = list_of_dfs[1] #respiratory edges
 new = edges.copy()
 new['weight'] = new['weight'].astype(float) 
 
@@ -117,16 +118,59 @@ for edge in new.name.unique().tolist():
     plt.imshow(A)
     plt.show()
 
+# This sums the edge weights between nodes.
+new = edges.copy()
+new['weight'] = new['weight'].astype(float) 
 
+g = networkx.MultiDiGraph()
+for edge in new.name.unique().tolist():
+    new = edges.copy()
+    new['weight'] = new['weight'].astype(float) 
+    new = new[new.name == edge]
+    new = new.filter(['source','target','weight'], axis=1)
+    
+    edge_list = new.values.tolist()
 
+    for i in range(len(edge_list)):
+        g.add_edge(edge_list[i][0], edge_list[i][1], weight=edge_list[i][2])
+ 
+# this sums the parallel edges
+A = networkx.adjacency_matrix(g).A
+plt.imshow(A)
+plt.show()
 
+#%%
+# PLot within paragraph connections vs. between paragraph. Q: are paragraphs module like
+def plot_edge_info(): 
+    for counter,df in enumerate(list_of_dfs[1::2]):
+        # only sentence-to-sentence connections
+        df[['sjunk','spara','ssent']] = df['source'].str.split('.',expand=True)
+        df[['tjunk','tpara','tsent']] = df['target'].str.split('.',expand=True)
+        pat = "Sentence"
+        filt = df['sjunk'].str.contains(pat)
+        df = df[filt]
+        filt = df['tjunk'].str.contains(pat)
+        df = df[filt]
+        
+        df_within = df[df['spara'] == df['tpara']].copy()
+        df_within['connection'] = "within"
+        df_between = df[df['spara'] != df['tpara']].copy()
+        df_between['connection'] = "between"
+        
+        new = pd.concat([df_within,df_between], ignore_index=True)
+        pat = "COREF"
+        filt = new['name'].str.contains(pat)
+        new = new[~filt]
+        
+        new['weight'] = new['weight'].astype(float)
+        #plot
+        new.groupby(['name','connection'])['weight'].mean().unstack().plot.bar(title=str(text_names[counter] + " mean" ))
+        new.groupby(['name','connection'])['weight'].median().unstack().plot.bar(title=str(text_names[counter] + " median" ))
 
-
-
-
-
-
-
+plot_edge_info()
+#%%
+    
+    
 
 
 
