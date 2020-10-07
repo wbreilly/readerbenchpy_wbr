@@ -6,7 +6,7 @@ Benchmarks of cna_graph with Hinze texts. Getting a feel for what it does.
 @author: WBR
 """
 import sys
-# sys.path.append('/Users/WBR/walter/diss_readerbenchpy/readerbenchpy/wbr_scratch')
+sys.path.append('/Users/WBR/walter/diss_readerbenchpy/readerbenchpy/wbr_scratch')
 
 from graph_extractor import compute_graph,create_edge_df,create_node_df
 from rb.core.lang import Lang
@@ -15,29 +15,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # single text/ manual input
-# text = ['Mona was a good dog. She was the best dog named Mona.']
-# with open('/Users/WBR/walter/diss_readerbenchpy/texts/endocrine.txt') as f:
-    # text = f.read()
-# text = [text]
-# models = [{"model":"word2vec","corpus":"coca"},
-#           {"model":"lsa","corpus":"coca"},
-#           {"model":"lda","corpus":"coca"}]
-# result = compute_graph(text,Lang.EN,models)
-# df = create_node_df(result)
-# dfe = create_edge_df(result)
+def single_text():
+    text = ['Mona was a good dog. She was the best dog named Mona.']
+    with open('/Users/WBR/walter/diss_readerbenchpy/texts/endocrine.txt') as f:
+        text = f.read()
+    text = [text]
+    models = [{"model":"word2vec","corpus":"coca"},
+              {"model":"lsa","corpus":"coca"},
+              {"model":"lda","corpus":"coca"}]
+    result = compute_graph(text,Lang.EN,models)
+    df = create_node_df(result)
+    dfe = create_edge_df(result)
 
 # batch method
 models = [{"model":"word2vec","corpus":"coca"},
           {"model":"lsa","corpus":"coca"}]
           #{"model":"lda","corpus":"coca"}] # not sure this is working as intended. 
           # Extremely  high sim between everything in Hinze texts.
-
-# text_names = ['endocrine.txt',
-#               'endocrine_p1.txt',
-#               'endocrine_p2.txt',
-#               'endocrine_p3.txt',
-#               'endocrine_p4.txt',
-#               'endocrine_p5.txt']
 
 text_names=['respiratory.txt',
             'viruses.txt',
@@ -168,9 +162,28 @@ def plot_edge_info():
         new.groupby(['name','connection'])['weight'].median().unstack().plot.bar(title=str(text_names[counter] + " median" ))
 
 plot_edge_info()
+
+
 #%%
+# select most and least important sentences from each para
+def sentmin(list_of_dfs):
+    # node dfs, so count by two
+    for counter,df in enumerate(list_of_dfs[::2]):
+        para_min = df.groupby(by='para')['importance'].min()
+        df['para_min'] = df['para'].map(para_min)
+        
+sentmin(list_of_dfs)
+
+def get_min_and_max():
+    result = []
+    for counter,df in enumerate(list_of_dfs[::2]):
+        # max and min importance sentences
+        out = df[(df['importance'] == df['para_min']) | (df['importance'] == df['para_max'])]
+        out = out.filter(['node','importance','content'])    
+        result.append(out)
+    return result
     
-    
+result = get_min_and_max()    
 
 
 
