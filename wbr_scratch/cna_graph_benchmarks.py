@@ -92,15 +92,10 @@ def sentmax(node_dfs):
 prop = sentmax(node_dfs)
 
 #%%
-#create adjacency matrix from weighted edge list
-### COREF needs work. Weight is currently nan.
-# single type of edge instead of multiple plots. Can't show in one plot because
-# similarity between different models doesn't make sense.
+#create adjacency matrices from weighted edge list
+### COREF edges are nan, only present for subset of nodes, other edges are fully connected
 
-edges = edge_dfs[1] #respiratory edges
-new = edges.copy()
-
-# for each text return a df with edge type and np array of edges.
+# for each text return a df with edge type and np array of edges. One edge type per mtx
 def get_adj_dfs(edge_dfs):
     adj_dfs=[]
     for text in edge_dfs:
@@ -123,46 +118,75 @@ def get_adj_dfs(edge_dfs):
             edge_names.append(edge)
             # end edge
         df=pd.DataFrame({'edge':edge_names,'mtx':mtx_list})
+        # df=pd.DataFrame(index=edge_names,data={'mtx':mtx_list})
         adj_dfs.append(df)
         # end text
     return adj_dfs
 
-out = get_adj_dfs(edge_dfs)    
+# This adds all edge types to a multi directed graph. adjacency_matrix sums the weights
+# This nearly redundant function is necessary because COREF isn't fully connected
+def get_multi_adj(edge_dfs):
+    multi_adjs=[]
+    for text in edge_dfs:
+        g = nx.MultiDiGraph()
+        for edge in text.name.unique().tolist():
+            new = text.copy()
+            new['weight'] = new['weight'].astype(float) 
+            new = new[new.name == edge]
+            new = new.filter(['source','target','weight'], axis=1)
+            edge_list = new.values.tolist()            
+            for i in range(len(edge_list)):
+                g.add_edge(edge_list[i][0], edge_list[i][1], weight=edge_list[i][2])
+            # end i
+        # end edge
+        A = nx.adjacency_matrix(g).A
+        multi_adjs.append(A)
+    # end text 
+    return multi_adjs
 
-df=pd.DataFrame({'edge':edge_names,'mtx':mtx_list})
-filt = df['edge'] == 'COREF'
-df = df[~filt]
-
-
-g = sns.FacetGrid(df, col='edge')
-g.map(lambda x, **kwargs : (plt.imshow(x.values[0]),plt.grid(False)), 'mtx')
-
-#%%
-
-# This sums the edge weights between nodes.
-new = edges.copy()
-new['weight'] = new['weight'].astype(float) 
-
-g = nx.MultiDiGraph()
-for edge in new.name.unique().tolist():
-    new = edges.copy()
-    new['weight'] = new['weight'].astype(float) 
-    new = new[new.name == edge]
-    new = new.filter(['source','target','weight'], axis=1)
-    
-    edge_list = new.values.tolist()
-
-    for i in range(len(edge_list)):
-        g.add_edge(edge_list[i][0], edge_list[i][1], weight=edge_list[i][2])
- 
-# this sums the parallel edges
-A = nx.adjacency_matrix(g).A
-plt.imshow(A)
-plt.show()
+def NormalizeData(data):
+    return (data - np.nanmin(data)) / (np.nanmax(data) - np.nanmin(data))     
+   
+# normalize multi_adjs becusae they are sum of edges and therefore greater than 1. 
+# Not necessary if stand alone plot.     
+def multi_adj_proc(multi_adjs):
+    for i,junk in enumerate(multi_adjs):
+        multi_adjs[i] = NormalizeData(multi_adjs[i])
+        mask = np.isnan(multi_adjs[i])
+        multi_adjs[i][mask] = 1
+     
+def plot_edge_adjacency():
+    adj_dfs = get_adj_dfs(edge_dfs)
+    multi_adjs = get_multi_adj(edge_dfs)
+    multi_adj_proc(multi_adjs)
+    for itext in range(len(text_names)):
+        df = adj_dfs[itext]
+        # substitute coref for the multi_adj (coref are 1's everything else is normalized sum of edges)
+        filt = df['edge'] =='COREF'
+        df= df[~filt]
+        df = df.append({'edge':'MultiDiGraph','mtx':multi_adjs[itext]},ignore_index=True)
+        # Argument edges don't have connections to Document, so size is different without fix
+        df[df[df.edge == ()]]
+        
+        # remove Document connections bc ARGUMENT don't have them
+        filt = df['edge'].str.contains('SEMANTIC')
+        df.loc[filt,'mtx'] = df.loc[filt,'mtx'].apply(lambda x:x[:-1,1:])
+        
+        # Appreciate how difficult this was to make!!
+        g = sns.FacetGrid(df, col='edge')
+        g.map_dataframe(lambda data, color: sns.heatmap(data.mtx.values[0], linewidths=0,vmin=0,vmax=1,xticklabels=False,yticklabels=False))
+        g.set_titles('{col_name}')
+        plt.subplots_adjust(top=.8)
+        g.fig.suptitle(str(clean_text_names[itext] + ' adjacency matrices'))
+        # removing colorbar from each plot is not worth coding. All or none or use Illustrator.
+        fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
+        g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
+        
+plot_edge_adjacency()
 
 #%%
 # PLot within paragraph connections vs. between paragraph. Q: are paragraphs module like
-def plot_edge_info(): 
+def plot_edge_bar_hist(): 
     for counter,df in enumerate(edge_dfs):
         # only sentence-to-sentence connections
         df[['sjunk','spara','ssent']] = df['source'].str.split('.',expand=True)
@@ -179,14 +203,17 @@ def plot_edge_info():
         df_between['connection'] = "between"
         
         new = pd.concat([df_within,df_between], ignore_index=True)
-        pat = "COREF"
-        filt = new['name'].str.contains(pat)
+        filt = new['name'].str.contains("COREF")
         new = new[~filt]
         
         new['weight'] = new['weight'].astype(float)
+        
         #bar plot
-        new.groupby(['name','connection'])['weight'].mean().unstack().plot.bar(title=str(clean_text_names[counter] + " mean" ))
-        new.groupby(['name','connection'])['weight'].median().unstack().plot.bar(title=str(clean_text_names[counter] + " median" ))
+        # new.groupby(['name','connection'])['weight'].mean().unstack().plot.bar(title=str(clean_text_names[counter] + " mean" ))
+        # fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
+        # plt.savefig(fig_path + 'bar_mean_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
+        # new.groupby(['name','connection'])['weight'].median().unstack().plot.bar(title=str(clean_text_names[counter] + " median" ))
+        # plt.savefig(fig_path + 'bar_median_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         
         # overlapping histograms
         g = sns.FacetGrid(new, col="name", hue="connection",hue_order=['between','within'], col_wrap=5)
@@ -196,11 +223,9 @@ def plot_edge_info():
         g.set_titles('{col_name}')
         plt.subplots_adjust(top=.8)
         g.fig.suptitle(str(clean_text_names[counter] + ' edge weights'))
+        # g.savefig(fig_path + 'histogram_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         
-plot_edge_info()
-
-# histogram plot would be nice 
-
+plot_edge_bar_hist()
 
 #%%
 # select most and least important sentences from each para
@@ -223,30 +248,7 @@ sentmin()
 result = get_min_and_max()    
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-        
-        
-        
-
+#%%
 
 
     
