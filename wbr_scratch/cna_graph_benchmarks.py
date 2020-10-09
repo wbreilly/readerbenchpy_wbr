@@ -5,6 +5,9 @@ Benchmarks of cna_graph with Hinze texts. Getting a feel for what it does.
 
 @author: WBR
 """
+
+#%%
+#setup
 import os
 os.chdir('/Users/WBR/walter/diss_readerbenchpy/')
 import sys
@@ -16,6 +19,7 @@ from pandas import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import networkx as nx
 
 # single text/ manual input
 def single_text():
@@ -92,38 +96,46 @@ prop = sentmax(node_dfs)
 ### COREF needs work. Weight is currently nan.
 # single type of edge instead of multiple plots. Can't show in one plot because
 # similarity between different models doesn't make sense.
-import networkx
+
 edges = edge_dfs[1] #respiratory edges
 new = edges.copy()
-new['weight'] = new['weight'].astype(float) 
 
-mtx_list=[]
-edge_names=[]
-for edge in new.name.unique().tolist():
-    new = edges.copy()
-    new['weight'] = new['weight'].astype(float) 
-    new = new[new.name == edge]
-    new = new.filter(['source','target','weight'], axis=1)
-    
-    edge_list = new.values.tolist()
-    g = networkx.DiGraph()
-    for i in range(len(edge_list)):
-        g.add_edge(edge_list[i][0], edge_list[i][1], weight=edge_list[i][2])
-    
-    # numpy array
-    A = networkx.adjacency_matrix(g).A
-    #exception for COREF, nan is holding place of connection
-    if (edge == 'COREF'):
-        where_are_NaNs = np.isnan(A)
-        A[where_are_NaNs] = 1   
-    
-    mtx_list.append(A)
-    edge_names.append(edge)
-    
-    # plt.imshow(A)
-    # plt.show()
-    
+# for each text return a df with edge type and np array of edges.
+def get_adj_dfs(edge_dfs):
+    adj_dfs=[]
+    for text in edge_dfs:
+        mtx_list=[]
+        edge_names=[]
+        for edge in text.name.unique().tolist():
+            new = text.copy()
+            new['weight'] = new['weight'].astype(float) 
+            new = new[new.name == edge]
+            new = new.filter(['source','target','weight'], axis=1)
+            
+            edge_list = new.values.tolist()
+            g = nx.DiGraph()
+            for i in range(len(edge_list)):
+                g.add_edge(edge_list[i][0], edge_list[i][1], weight=edge_list[i][2])
+            
+            # numpy array
+            A = nx.adjacency_matrix(g).A    
+            mtx_list.append(A)
+            edge_names.append(edge)
+            # end edge
+        df=pd.DataFrame({'edge':edge_names,'mtx':mtx_list})
+        adj_dfs.append(df)
+        # end text
+    return adj_dfs
 
+out = get_adj_dfs(edge_dfs)    
+
+df=pd.DataFrame({'edge':edge_names,'mtx':mtx_list})
+filt = df['edge'] == 'COREF'
+df = df[~filt]
+
+
+g = sns.FacetGrid(df, col='edge')
+g.map(lambda x, **kwargs : (plt.imshow(x.values[0]),plt.grid(False)), 'mtx')
 
 #%%
 
@@ -131,7 +143,7 @@ for edge in new.name.unique().tolist():
 new = edges.copy()
 new['weight'] = new['weight'].astype(float) 
 
-g = networkx.MultiDiGraph()
+g = nx.MultiDiGraph()
 for edge in new.name.unique().tolist():
     new = edges.copy()
     new['weight'] = new['weight'].astype(float) 
@@ -144,7 +156,7 @@ for edge in new.name.unique().tolist():
         g.add_edge(edge_list[i][0], edge_list[i][1], weight=edge_list[i][2])
  
 # this sums the parallel edges
-A = networkx.adjacency_matrix(g).A
+A = nx.adjacency_matrix(g).A
 plt.imshow(A)
 plt.show()
 
