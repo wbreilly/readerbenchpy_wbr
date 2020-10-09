@@ -180,7 +180,7 @@ def plot_edge_adjacency():
         g.fig.suptitle(str(clean_text_names[itext] + ' adjacency matrices'))
         # removing colorbar from each plot is not worth coding. All or none or use Illustrator.
         fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
-        g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
+        # g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
         
 plot_edge_adjacency()
 
@@ -210,14 +210,15 @@ def plot_edge_bar_hist():
         
         #bar plot
         # new.groupby(['name','connection'])['weight'].mean().unstack().plot.bar(title=str(clean_text_names[counter] + " mean" ))
-        # fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
+        fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
         # plt.savefig(fig_path + 'bar_mean_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
-        # new.groupby(['name','connection'])['weight'].median().unstack().plot.bar(title=str(clean_text_names[counter] + " median" ))
+        new.groupby(['name','connection'])['weight'].median().unstack().plot.bar(title=str(clean_text_names[counter] + " median" ))
         # plt.savefig(fig_path + 'bar_median_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         
         # overlapping histograms
         g = sns.FacetGrid(new, col="name", hue="connection",hue_order=['between','within'], col_wrap=5)
         g.map(plt.hist, 'weight',alpha=.5)
+        g.fig.get_axes()[0].set_yscale('log')
         g.axes[-1].legend()
         g.set(xlim=(0, None))
         g.set_titles('{col_name}')
@@ -246,7 +247,6 @@ def get_min_and_max():
     
 sentmin()
 result = get_min_and_max()    
-
 
 #%%
 
