@@ -20,20 +20,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import networkx as nx
-
-# single text/ manual input
-def single_text():
-    text = ['Mona was a good dog. She was the best dog named Mona.']
-    with open('/Users/WBR/walter/diss_readerbenchpy/texts/endocrine.txt') as f:
-        text = f.read()
-    text = [text]
-    models = [{"model":"word2vec","corpus":"coca"},
-              {"model":"lsa","corpus":"coca"},
-              {"model":"lda","corpus":"coca"}]
-    result = compute_graph(text,Lang.EN,models)
-    node_df = create_node_df(result)
-    edge_df = create_edge_df(result)
-    return node_df,edge_df
+import re
 
 # batch method
 models = [{"model":"word2vec","corpus":"coca"},
@@ -46,7 +33,24 @@ text_names=['respiratory.txt',
             'vision.txt',
             'digestion.txt',
             'endocrine.txt']
+
 clean_text_names = [s.replace('.txt','') for s in text_names]
+
+# single text/ manual input
+def single_text():
+    text = ['Mona was a good dog. She was the best dog named Mona.']
+    with open('/Users/WBR/walter/diss_readerbenchpy/texts/endocrine.txt') as f:
+        text = f.read()
+    text = [text]
+    # remove parenthesized info if present. Used for journal example.
+    text[0] = re.sub(r'\(.*?\)', '', text[0])
+    models = [{"model":"word2vec","corpus":"coca"},
+              {"model":"lsa","corpus":"coca"},
+              {"model":"lda","corpus":"coca"}]
+    result = compute_graph(text,Lang.EN,models)
+    node_df = create_node_df(result)
+    edge_df = create_edge_df(result)
+    return node_df,edge_df
 
 def import_texts(text_names: list):
     path = '/Users/WBR/walter/diss_readerbenchpy/texts/'
@@ -65,10 +69,6 @@ def batch_texts(text_list):
         edge_dfs.append(create_edge_df(result))
     return node_dfs, edge_dfs
 
-    
-text_list = import_texts(text_names)
-node_dfs,edge_dfs = batch_texts(text_list)
-    
 # gives a proportion of paragraphs where the first sentence is the most important one
 def sentmax(node_dfs):
     first=[]
@@ -89,6 +89,8 @@ def sentmax(node_dfs):
         first.append([prop,clean_text_names[counter]])
     return first
 
+text_list = import_texts(text_names)                     
+node_dfs,edge_dfs = batch_texts(text_list)
 prop = sentmax(node_dfs)
 
 #%%
@@ -180,13 +182,26 @@ def plot_edge_adjacency():
         g.fig.suptitle(str(clean_text_names[itext] + ' adjacency matrices'))
         # removing colorbar from each plot is not worth coding. All or none or use Illustrator.
         fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
-        # g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
+        g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
         
 plot_edge_adjacency()
 
 #%%
 # PLot within paragraph connections vs. between paragraph. Q: are paragraphs module like
-def plot_edge_bar_hist(): 
+def plot_edge_bar_hist(edge_dfs,*args):
+    '''
+    Parameters
+    ----------
+    edge_dfs : list
+        list of edge dfs from batch_texts
+    *args : string
+        'save_figs' : save figures
+        'max_sent'  : source nodes are most important sentences
+
+    Returns
+    -------
+    None. PLots plots. 
+    '''
     for counter,df in enumerate(edge_dfs):
         # only sentence-to-sentence connections
         df[['sjunk','spara','ssent']] = df['source'].str.split('.',expand=True)
@@ -205,15 +220,24 @@ def plot_edge_bar_hist():
         new = pd.concat([df_within,df_between], ignore_index=True)
         filt = new['name'].str.contains("COREF")
         new = new[~filt]
-        
         new['weight'] = new['weight'].astype(float)
         
+        if 'max_sent' in args:
+            # want to look at only most important sentence connections
+            node_df = node_dfs[counter].copy()
+            max_sent =  node_df[node_df['importance'] == node_df['para_max']]
+            max_sent = max_sent.node.values.tolist()
+            match = new['source'].isin(max_sent)
+            new = new[match]
+            fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/max_I_'
+        else:
+            fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
+            
         #bar plot
-        # new.groupby(['name','connection'])['weight'].mean().unstack().plot.bar(title=str(clean_text_names[counter] + " mean" ))
-        fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
-        # plt.savefig(fig_path + 'bar_mean_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
+        new.groupby(['name','connection'])['weight'].mean().unstack().plot.bar(title=str(clean_text_names[counter] + " mean" ))
+        if 'save_figs' in args: plt.savefig(fig_path + 'bar_mean_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         new.groupby(['name','connection'])['weight'].median().unstack().plot.bar(title=str(clean_text_names[counter] + " median" ))
-        # plt.savefig(fig_path + 'bar_median_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
+        if 'save_figs' in args: plt.savefig(fig_path + 'bar_median_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         
         # overlapping histograms
         g = sns.FacetGrid(new, col="name", hue="connection",hue_order=['between','within'], col_wrap=5)
@@ -224,9 +248,9 @@ def plot_edge_bar_hist():
         g.set_titles('{col_name}')
         plt.subplots_adjust(top=.8)
         g.fig.suptitle(str(clean_text_names[counter] + ' edge weights'))
-        # g.savefig(fig_path + 'histogram_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
+        if 'save_figs' in args: g.savefig(fig_path + 'histogram_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         
-plot_edge_bar_hist()
+out = plot_edge_bar_hist(edge_dfs,'max_sent')
 
 #%%
 # select most and least important sentences from each para
