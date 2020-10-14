@@ -33,7 +33,7 @@ text_names=['respiratory.txt',
             'vision.txt',
             'digestion.txt',
             'endocrine.txt']
-text_names=['goldsmith_baldwin.txt']
+# text_names=['goldsmith_baldwin.txt']
 
 clean_text_names = [s.replace('.txt','') for s in text_names]
 
@@ -223,14 +223,14 @@ def plot_edge_bar_hist(edge_dfs,*args):
         new = pd.concat([df_within,df_between], ignore_index=True)
         filt = new['name'].str.contains("COREF")
         new = new[~filt]
-        new['weight'] = new['weight'].astype(float)
+        new['weight'] = new['weight'].astype(float)     
         
         if 'z_filt' in args:
             # filtered_graph
-            new['z_score'] = df.groupby('name')['weight'].apply(lambda x: (x - x.mean())/x.std())
-            filt = new[new['z_score' > 1]]
+            new['z_score'] = new.groupby(['name','connection'])['weight'].apply(lambda x: (x - x.mean())/x.std())
+            filt = new['z_score'] > 1
             new = new[filt]
-        
+         
         if 'max_sent' in args:
             # only most important sentence connections
             node_df = node_dfs[counter].copy()
