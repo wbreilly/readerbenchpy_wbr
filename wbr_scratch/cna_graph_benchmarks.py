@@ -33,6 +33,7 @@ text_names=['respiratory.txt',
             'vision.txt',
             'digestion.txt',
             'endocrine.txt']
+text_names=['goldsmith_baldwin.txt']
 
 clean_text_names = [s.replace('.txt','') for s in text_names]
 
@@ -157,7 +158,7 @@ def multi_adj_proc(multi_adjs):
         mask = np.isnan(multi_adjs[i])
         multi_adjs[i][mask] = 1
      
-def plot_edge_adjacency():
+def plot_edge_adjacency(*args):
     adj_dfs = get_adj_dfs(edge_dfs)
     multi_adjs = get_multi_adj(edge_dfs)
     multi_adj_proc(multi_adjs)
@@ -182,9 +183,9 @@ def plot_edge_adjacency():
         g.fig.suptitle(str(clean_text_names[itext] + ' adjacency matrices'))
         # removing colorbar from each plot is not worth coding. All or none or use Illustrator.
         fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
-        g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
+        if 'save_figs'in args: g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
         
-plot_edge_adjacency()
+plot_edge_adjacency('save_figs')
 
 #%%
 # PLot within paragraph connections vs. between paragraph. Q: are paragraphs module like
@@ -197,6 +198,7 @@ def plot_edge_bar_hist(edge_dfs,*args):
     *args : string
         'save_figs' : save figures
         'max_sent'  : source nodes are most important sentences
+        'z_filt'    : filters out edges with z-score weight less than or equal to 1
 
     Returns
     -------
@@ -217,19 +219,33 @@ def plot_edge_bar_hist(edge_dfs,*args):
         df_between = df[df['spara'] != df['tpara']].copy()
         df_between['connection'] = "between"
         
+        # new is the df used for plotting
         new = pd.concat([df_within,df_between], ignore_index=True)
         filt = new['name'].str.contains("COREF")
         new = new[~filt]
         new['weight'] = new['weight'].astype(float)
         
+        if 'z_filt' in args:
+            # filtered_graph
+            new['z_score'] = df.groupby('name')['weight'].apply(lambda x: (x - x.mean())/x.std())
+            filt = new[new['z_score' > 1]]
+            new = new[filt]
+        
         if 'max_sent' in args:
-            # want to look at only most important sentence connections
+            # only most important sentence connections
             node_df = node_dfs[counter].copy()
             max_sent =  node_df[node_df['importance'] == node_df['para_max']]
             max_sent = max_sent.node.values.tolist()
             match = new['source'].isin(max_sent)
             new = new[match]
+          
+        # figure naming 
+        if ('max_sent' in args) & ('z_filt' in args):
+            fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/zfilt_max_I_'
+        elif 'max_sent' in args:
             fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/max_I_'
+        elif 'z_filt' in args:
+            fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/zfilt_'
         else:
             fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
             
@@ -250,7 +266,7 @@ def plot_edge_bar_hist(edge_dfs,*args):
         g.fig.suptitle(str(clean_text_names[counter] + ' edge weights'))
         if 'save_figs' in args: g.savefig(fig_path + 'histogram_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         
-out = plot_edge_bar_hist(edge_dfs,'max_sent')
+plot_edge_bar_hist(edge_dfs,'max_sent','z_filt','save_figs')
 
 #%%
 # select most and least important sentences from each para
