@@ -33,7 +33,7 @@ text_names=['respiratory.txt',
             'vision.txt',
             'digestion.txt',
             'endocrine.txt']
-# text_names=['goldsmith_baldwin.txt']
+text_names=['viruses_idea_units.txt']
 
 clean_text_names = [s.replace('.txt','') for s in text_names]
 
@@ -90,7 +90,19 @@ def sentmax(node_dfs):
         first.append([prop,clean_text_names[counter]])
     return first
 
-text_list = import_texts(text_names)                     
+
+text_list = import_texts(text_names)
+# need to put these in a helper function module!
+# fix hypthenation formatting issue
+# text_list[0] = re.sub(r'- ', '', text_list[0])
+# remove all but first citation in a group
+# text_list[0] = re.sub(r';.*?\)', ')' , text_list[0]) 
+
+# remove any parenthized stuff (lazy way to remove citations)    
+# text_list[0] = re.sub(r'\(.*?\)', '', text_list[0])
+# period in et al. causing new sentence
+# text_list[0] = re.sub(r'et al\.', 'et al', text_list[0])
+                 
 node_dfs,edge_dfs = batch_texts(text_list)
 prop = sentmax(node_dfs)
 
@@ -183,9 +195,9 @@ def plot_edge_adjacency(*args):
         g.fig.suptitle(str(clean_text_names[itext] + ' adjacency matrices'))
         # removing colorbar from each plot is not worth coding. All or none or use Illustrator.
         fig_path= '/Users/WBR/walter/diss_readerbenchpy/figures/'
-        if 'save_figs'in args: g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
+        if 'save_figs' in args: g.savefig(fig_path + 'adjacency_edges_' + clean_text_names[itext]  + '.png', format='png', dpi=1200)
         
-plot_edge_adjacency('save_figs')
+plot_edge_adjacency()
 
 #%%
 # PLot within paragraph connections vs. between paragraph. Q: are paragraphs module like
@@ -266,7 +278,7 @@ def plot_edge_bar_hist(edge_dfs,*args):
         g.fig.suptitle(str(clean_text_names[counter] + ' edge weights'))
         if 'save_figs' in args: g.savefig(fig_path + 'histogram_edges_' + clean_text_names[counter]  + '.png', format='png', dpi=1200)
         
-plot_edge_bar_hist(edge_dfs,'max_sent','z_filt','save_figs')
+plot_edge_bar_hist(edge_dfs,'save_figs')
 
 #%%
 # select most and least important sentences from each para
@@ -290,6 +302,24 @@ result = get_min_and_max()
 
 #%%
 
+# get adjacency matrices out for Semantic CRP in diss_recall/recall_analysis.py
+# To do: figure out how to load these functions as a module into recall_analysis.py
 
+
+adj_dfs = get_adj_dfs(edge_dfs)
+
+multi_adjs = get_multi_adj(edge_dfs)
+
+save_dir = '/Volumes/GoogleDrive/My Drive/grad_school/DML_WBR/dissertation_drive/cna_recall/'    
+multi_adjs[0].to_csv(save_dir + 'viruses_idea_units_multi_adjacency_matrices.csv')    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
